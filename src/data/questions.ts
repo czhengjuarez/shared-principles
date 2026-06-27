@@ -6,6 +6,13 @@
 
 export type Lean = 'standardize' | 'principles' | 'hybrid';
 
+// Serialised answer — question text + the chosen option text.
+// Passed to the /api/craft worker to ground the AI in the user's context.
+export interface AnswerContext {
+  question: string;
+  answer: string;
+}
+
 export interface Option {
   text: string;
   lean: Lean;

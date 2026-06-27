@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import QuestionScreen from '../components/QuestionScreen';
 import ResultScreen from '../components/ResultScreen';
-import { questions, score } from '../data/questions';
+import { questions, score, type AnswerContext } from '../data/questions';
 
 // step: -1 = intro, 0..6 = questions, questions.length = result
 type Step = number;
@@ -79,7 +79,18 @@ export default function Home() {
   // ── Result ──
   if (step >= questions.length) {
     const result = score(answers);
-    return <ResultScreen result={result} subject={subject} onRestart={startIntro} />;
+    const answersContext: AnswerContext[] = questions.map((q, i) => ({
+      question: q.question,
+      answer: answers[i] != null ? q.options[answers[i]!].text : 'Not answered',
+    }));
+    return (
+      <ResultScreen
+        result={result}
+        subject={subject}
+        answers={answersContext}
+        onRestart={startIntro}
+      />
+    );
   }
 
   // ── Question ──

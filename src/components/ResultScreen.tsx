@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { ChevronDown, RotateCcw } from 'lucide-react';
-import { leanLabel, outcomes, type Lean, type ScoreResult } from '../data/questions';
+import { leanLabel, outcomes, type AnswerContext, type Lean, type ScoreResult } from '../data/questions';
+import PrincipleTemplate from './PrincipleTemplate';
+import PrincipleCrafter from './PrincipleCrafter';
 
 interface Props {
   result: ScoreResult;
   subject: string;
+  answers: AnswerContext[];
   onRestart: () => void;
 }
 
@@ -44,8 +47,9 @@ const scoreBadgeClass: Record<Lean, string> = {
   hybrid: 'of-badge of-badge--purple',
 };
 
-export default function ResultScreen({ result, subject, onRestart }: Props) {
+export default function ResultScreen({ result, subject, answers, onRestart }: Props) {
   const outcome = outcomes[result.recommendation];
+  const isPrinciples = result.recommendation === 'principles';
 
   return (
     <section aria-labelledby="result-title">
@@ -78,6 +82,16 @@ export default function ResultScreen({ result, subject, onRestart }: Props) {
           ))}
         </ol>
       </Disclosure>
+
+      {isPrinciples && (
+        <>
+          <div className="result__principles-divider">
+            <span>Write your principle</span>
+          </div>
+          <PrincipleTemplate subject={subject} />
+          <PrincipleCrafter subject={subject} answers={answers} />
+        </>
+      )}
 
       <div className="result__actions">
         <button type="button" className="of-btn of-btn--secondary of-btn--lg" onClick={onRestart}>

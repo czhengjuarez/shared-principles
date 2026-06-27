@@ -9,4 +9,14 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api': 'http://localhost:8787',
+    },
+  },
+  preview: {
+    proxy: {
+      '/api': 'http://localhost:8787',
+    },
+  },
 });
