@@ -1,0 +1,10 @@
+name = "decision-framework"
+main = "frontend-worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+account_id = "d6ff2f0914adb1d9faae77870fadb7cc"
+workers_dev = true
+
+# Static SPA only — v1 has no API routes, no database, no bindings.
+[site]
+bucket = "./dist"

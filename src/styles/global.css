@@ -1,0 +1,297 @@
+/* ===========================================================
+   shared-principles — app styles
+   Tokens come from tokens.css (Keel --of-* system) and Keel
+   class helpers from keel.css. Nothing hardcoded here that a
+   token already covers (color / type / spacing / radius).
+   =========================================================== */
+
+@import './tokens.css';
+@import './keel.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--of-bg-base);
+  color: var(--of-fg-default);
+  font-family: var(--of-font-sans);
+  font-size: var(--of-text-base);
+  line-height: var(--of-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--of-font-display);
+  letter-spacing: var(--of-tracking-tight);
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--of-fg-brand);
+}
+
+/* ── Layout shell ───────────────────────────────────────── */
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-topbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--of-space-4) var(--of-space-5);
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--of-space-4) var(--of-space-5) var(--of-space-20);
+}
+
+.app-footer {
+  text-align: center;
+  padding: var(--of-space-6) var(--of-space-5) var(--of-space-8);
+  font-size: var(--of-text-xs);
+  color: var(--of-fg-subtle);
+}
+
+/* ── Theme toggle ───────────────────────────────────────── */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--of-radius-md);
+  border: 1px solid var(--of-border-line);
+  background: var(--of-bg-elevated);
+  color: var(--of-fg-muted);
+  cursor: pointer;
+  transition: color var(--of-dur-fast), border-color var(--of-dur-fast);
+}
+.theme-toggle-btn:hover {
+  color: var(--of-fg-brand);
+  border-color: var(--of-border-brand);
+}
+.theme-toggle-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--of-ring);
+}
+
+/* ── Intro screen ───────────────────────────────────────── */
+.intro {
+  margin-top: var(--of-space-12);
+}
+.intro__eyebrow {
+  display: inline-block;
+  font-size: var(--of-text-xs);
+  font-weight: 600;
+  letter-spacing: var(--of-tracking-wide);
+  text-transform: uppercase;
+  color: var(--of-fg-brand);
+  margin-bottom: var(--of-space-4);
+}
+.intro__title {
+  font-size: var(--of-text-4xl);
+  line-height: var(--of-leading-tight);
+}
+.intro__subhead {
+  margin-top: var(--of-space-4);
+  font-size: var(--of-text-lg);
+  color: var(--of-fg-muted);
+}
+.intro__form {
+  margin-top: var(--of-space-10);
+  display: flex;
+  flex-direction: column;
+  gap: var(--of-space-4);
+}
+
+/* ── Progress text ──────────────────────────────────────── */
+.progress {
+  font-size: var(--of-text-sm);
+  font-weight: 600;
+  letter-spacing: var(--of-tracking-wide);
+  text-transform: uppercase;
+  color: var(--of-fg-subtle);
+  margin-bottom: var(--of-space-3);
+}
+.progress__subject {
+  color: var(--of-fg-brand);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Question screen ────────────────────────────────────── */
+.question__title {
+  font-size: var(--of-text-2xl);
+  line-height: var(--of-leading-snug);
+  margin-bottom: var(--of-space-6);
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--of-space-3);
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--of-space-3);
+  padding: var(--of-space-4);
+  border: 1px solid var(--of-border-line);
+  border-radius: var(--of-radius-lg);
+  background: var(--of-bg-elevated);
+  cursor: pointer;
+  transition: border-color var(--of-dur-fast), background var(--of-dur-fast), box-shadow var(--of-dur-fast);
+}
+.option:hover {
+  border-color: var(--of-border-brand);
+}
+.option--selected {
+  border-color: var(--of-border-brand);
+  background: var(--of-bg-brand-tint);
+  box-shadow: 0 0 0 1px var(--of-border-brand);
+}
+.option__radio {
+  margin-top: 2px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: var(--of-bg-brand);
+}
+.option__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--of-space-2);
+}
+.option__text {
+  color: var(--of-fg-default);
+  line-height: var(--of-leading-snug);
+}
+.option__lean {
+  align-self: flex-start;
+}
+
+/* ── Nav row (Back / Next) ──────────────────────────────── */
+.nav-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--of-space-8);
+  gap: var(--of-space-3);
+}
+.nav-row__spacer {
+  flex: 1;
+}
+
+/* ── Result screen ──────────────────────────────────────── */
+.result__hero {
+  margin-bottom: var(--of-space-6);
+}
+.result__recommendation {
+  font-size: var(--of-text-4xl);
+  line-height: var(--of-leading-tight);
+  letter-spacing: var(--of-tracking-tight);
+}
+.result__why {
+  margin-top: var(--of-space-4);
+  font-size: var(--of-text-md);
+  line-height: var(--of-leading-normal);
+}
+.result__subject {
+  margin-top: var(--of-space-3);
+  font-size: var(--of-text-sm);
+}
+
+.result__scores {
+  display: flex;
+  gap: var(--of-space-2);
+  margin: var(--of-space-5) 0;
+  flex-wrap: wrap;
+}
+
+.disclosure {
+  border: 1px solid var(--of-border-line);
+  border-radius: var(--of-radius-lg);
+  background: var(--of-bg-elevated);
+  margin-top: var(--of-space-3);
+  overflow: hidden;
+}
+.disclosure__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--of-space-3);
+  width: 100%;
+  padding: var(--of-space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--of-font-display);
+  font-size: var(--of-text-md);
+  font-weight: 600;
+  color: var(--of-fg-default);
+  text-align: left;
+}
+.disclosure__summary:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--of-ring);
+}
+.disclosure__icon {
+  color: var(--of-fg-subtle);
+  transition: transform var(--of-dur-fast);
+  flex-shrink: 0;
+}
+.disclosure__icon--open {
+  transform: rotate(180deg);
+}
+.disclosure__body {
+  padding: 0 var(--of-space-4) var(--of-space-4);
+  color: var(--of-fg-muted);
+  line-height: var(--of-leading-normal);
+}
+.disclosure__body ol {
+  margin: 0;
+  padding-left: var(--of-space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--of-space-3);
+}
+.disclosure__body li {
+  padding-left: var(--of-space-1);
+}
+
+.result__actions {
+  margin-top: var(--of-space-8);
+}
+
+@media (max-width: 480px) {
+  .intro__title,
+  .result__recommendation {
+    font-size: var(--of-text-3xl);
+  }
+  .question__title {
+    font-size: var(--of-text-xl);
+  }
+}
