@@ -4,7 +4,7 @@ Agent context for Claude Code and deployed agents working on this project.
 
 ## What this is
 
-Shared Principles is a 7-question triage tool that outputs a recommendation — **Standardize**, **Shared Principles**, or **Hybrid** — with reasoning and next steps. An ops leader enters what they're evaluating, answers 7 questions, and gets a clear recommendation. All logic is client-side.
+Shared Principles is a 7-question triage tool that outputs a recommendation — **Standardize**, **Shared Principles**, or **Hybrid** — with reasoning and next steps. When the recommendation is Shared Principles, it also shows a principle documentation template and an AI-powered crafter to help write the principle.
 
 Live: https://decision-framework.coscient.workers.dev
 Owner: czhengjuarez / changying@coscient.com
@@ -13,15 +13,17 @@ Owner: czhengjuarez / changying@coscient.com
 
 ## Stack
 
-- **Runtime:** Cloudflare Workers (static SPA serving only — no API routes in v1)
+- **Runtime:** Cloudflare Workers (edge)
 - **Frontend:** React 18 + TypeScript + Vite 6
 - **Design system:** Keel `--of-*` tokens (vendored from `github.com/czhengjuarez/Keel`)
-- **Storage:** None — fully client-side, no database, no R2
+- **AI:** Cloudflare Workers AI — `@cf/meta/llama-3.3-70b-instruct-fp8-fast` (principle crafter)
+- **Storage:** None — no database, no R2
 
 ## Key commands
 
 ```bash
-npm run dev          # Vite on :5173
+npm run dev          # Vite on :5173 (proxies /api → :8787)
+npx wrangler dev --remote --port 8787  # Worker with live Workers AI (second terminal)
 npm run build        # tsc -b && vite build → ./dist
 npm run deploy       # build + wrangler deploy
 ```
@@ -32,16 +34,18 @@ npm run deploy       # build + wrangler deploy
 
 | File | Purpose |
 |---|---|
-| `src/data/questions.ts` | **Single source of truth.** All 7 questions, option weights, lean labels, output content (why / meaning / next steps), and the `score()` function. |
-| `src/pages/Home.tsx` | State machine: step `-1` = intro, `0–6` = questions, `7` = result. No router. |
+| `src/data/questions.ts` | **Single source of truth.** All 7 questions, option weights, lean labels, `Outcome` content, `AnswerContext` type, and the `score()` function. |
+| `src/pages/Home.tsx` | State machine: step `-1` = intro, `0–6` = questions, `7` = result. Builds `AnswerContext[]` and passes to `ResultScreen`. No router. |
 | `src/components/QuestionScreen.tsx` | Renders one question with 3 radio options and Back/Next nav. |
-| `src/components/ResultScreen.tsx` | Renders recommendation hero (`.of-card--brand-elevated`), score badges, and two expandable disclosures. |
+| `src/components/ResultScreen.tsx` | Recommendation hero, score badges, "What this means" + "Next steps" disclosures. When `recommendation === 'principles'`, renders `PrincipleTemplate` and `PrincipleCrafter`. |
+| `src/components/PrincipleTemplate.tsx` | Six-section principle documentation template, subject-aware. Copy button exports plain text via `navigator.clipboard`. |
+| `src/components/PrincipleCrafter.tsx` | AI chat component. Posts to `/api/craft` with `{ subject, answers, history }`. Starter chips, loading state, scrollable message log. |
 | `src/components/Layout.tsx` | App shell + theme toggle. Sets `data-theme` + `colorScheme` on `<html>`, persists to `localStorage`. |
-| `frontend-worker.js` | Cloudflare Worker: `getAssetFromKV` for SPA static assets, 404 → `index.html` fallback. No `/api` routes. |
+| `frontend-worker.js` | Cloudflare Worker: `POST /api/craft` (Workers AI) + static SPA asset serving with 404 → `index.html` fallback. |
 | `src/styles/tokens.css` | Keel `--of-*` design tokens (vendored). Do not edit values. |
 | `src/styles/keel.css` | Keel class helpers (vendored: `.of-btn`, `.of-card`, `.of-badge`, `.of-input`, etc.). |
 | `src/styles/global.css` | App-level styles built on tokens. All color/space/radius via `--of-*` vars. |
-| `wrangler.toml` | Worker config. Account: ChangyingArts (`d6ff2f09…`). Worker name: `decision-framework`. |
+| `wrangler.toml` | Worker config. Account: ChangyingArts (`d6ff2f09…`). Worker name: `decision-framework`. AI binding: `AI`. |
 
 ---
 
@@ -50,9 +54,10 @@ npm run deploy       # build + wrangler deploy
 ```ts
 type Lean = 'standardize' | 'principles' | 'hybrid';
 
-interface Option  { text: string; lean: Lean; weight: number; }
-interface Question { id: string; question: string; options: Option[]; }
-interface Outcome  { label: string; why: string; meaning: string; steps: string[]; }
+interface Option       { text: string; lean: Lean; weight: number; }
+interface Question     { id: string; question: string; options: Option[]; }
+interface Outcome      { label: string; why: string; meaning: string; steps: string[]; }
+interface AnswerContext { question: string; answer: string; } // serialised for the AI
 
 // outcomes: Record<Lean, Outcome>  — full output text per recommendation
 // score(answers: (number | null)[]): ScoreResult
@@ -77,6 +82,24 @@ interface Outcome  { label: string; why: string; meaning: string; steps: string[
 
 ---
 
+## API route
+
+```
+POST /api/craft
+Body:  { subject: string, answers: AnswerContext[], history: {role, content}[] }
+Reply: { reply: string }
+```
+
+The worker builds a system prompt grounding the AI in the user's subject, their 7 answers, and the target principle template structure. History is capped at the last 10 turns. No state is persisted — every request reconstructs context from what the frontend sends.
+
+The AI model constant is at the top of `frontend-worker.js`:
+```js
+const AI_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+```
+Update it there if the model is deprecated or you want to swap to a cheaper/faster model.
+
+---
+
 ## Design system rules
 
 - **Use `--of-*` tokens for everything** — no hardcoded color, spacing, radius, or shadow values in `global.css` or components.
@@ -98,21 +121,29 @@ Edit `src/data/questions.ts`. The structure is fully typed — add to `questions
 
 All output text (why, meaning, next steps) is in `outcomes` in `src/data/questions.ts`. Edit the relevant `Lean` key and redeploy. No component changes needed.
 
-### 3. Adjust scoring thresholds
+### 3. Adjust the principle template sections
+
+The template sections array is at the top of `src/components/PrincipleTemplate.tsx` (`SECTIONS`). Each entry has a `label` and a `placeholder`. Editing this changes both the displayed template and the plain-text copy output — no other files need changing.
+
+### 4. Tune the AI crafter system prompt
+
+The system prompt is built inside `handleCraft()` in `frontend-worker.js`. It is injected with the user's subject, their 7 answers, and the principle template structure. The current instruction is to ask one question at a time and never write the principle for the user. Adjust tone, scope, or template structure there.
+
+### 5. Adjust scoring thresholds
 
 The tiebreaker logic is in the `score()` function in `src/data/questions.ts`. The threshold `≤ 1` for both guards is intentionally conservative — adjust and re-validate against the test scenarios before shipping.
 
-### 4. Add a share/permalink feature (v2)
+### 6. Add a share/permalink feature (future)
 
-The planned v2 feature stores a scored result as a JSON object in R2, keyed by a short random id. The worker would gain two routes:
+Store a scored result as a JSON object in R2, keyed by a short random id. The worker gains two routes:
 - `POST /r` — save result JSON, return `{ id }`
 - `GET /r/:id` — retrieve result JSON
 
 The SPA reads `?r=<id>` on load and skips to the result screen. No database required — R2 object store only. Add `[[r2_buckets]]` binding to `wrangler.toml`, create the bucket (`decision-framework-results`), and add the two handlers to `frontend-worker.js`.
 
-### 5. Embed in another tool
+### 7. Embed the scoring function in another tool
 
-The scoring function is a pure function with no side effects. An agent can import it directly:
+`score()` is a pure function with no side effects:
 
 ```ts
 import { questions, score } from './src/data/questions';
@@ -124,12 +155,12 @@ const result = score([1, 0, 0, 0, 0, 0, 0]); // → { recommendation: 'standardi
 
 ## Things to be careful about
 
-1. **Apostrophes in question text** — option strings use single and double quotes. Use the existing quoting style; TypeScript will fail to compile with mismatched quotes.
+1. **Apostrophes in string literals** — option and template strings mix single and double quotes. Curly/smart quotes break TypeScript compilation. Use straight quotes only; double-quote any string that contains an apostrophe.
 
 2. **`tokens.css` is read-only** — values come from the Keel repo. If brand colors change, re-export from Keel rather than hand-editing values.
 
 3. **No router** — `main.tsx` renders `<Layout><Home /></Layout>` directly. The worker's SPA fallback (any 404 → `index.html`) handles direct URL access. Do not add `react-router-dom` unless there are genuinely separate routes.
 
-4. **No API routes** — `frontend-worker.js` only serves static assets. Do not add `/api` handlers in v1. Any stateful feature (share links, analytics) belongs in a v2 pass with explicit R2 or D1 planning.
+4. **Workers AI requires `--remote` locally** — `npm run dev` alone will fail `/api/craft` calls with a 503. Run `npx wrangler dev --remote --port 8787` in a second terminal for local AI testing.
 
-5. **`wrangler.toml` has no bindings in v1** — `[site]` only. Adding any binding (R2, AI, KV) requires a matching `env.*` type declaration if using TypeScript in the worker.
+5. **AI is stateless** — `PrincipleCrafter` sends the full conversation history on every request. The worker never writes to storage. If the component unmounts (e.g., user hits Start over), the conversation is gone.

@@ -2,6 +2,8 @@
 
 An interactive triage tool for ops leaders. You answer 7 questions about something you're considering standardizing. The app outputs one of three recommendations — **Standardize**, **Shared Principles**, or **Hybrid** — with reasoning, a plain-language explanation, and next steps.
 
+When the recommendation is **Shared Principles**, the app also surfaces a principle documentation template and an AI crafter to help you write the principle.
+
 **Live:** https://decision-framework.coscient.workers.dev
 
 ---
@@ -31,7 +33,15 @@ The questions cover:
 6. Pace of change in the domain
 7. Whether multiple good implementations already exist
 
-All logic is client-side. No backend, no database.
+---
+
+## Shared Principles result — extra features
+
+When the recommendation is Shared Principles, two additional sections appear below Next Steps:
+
+**Principle documentation template** — a structured card showing the six-section anatomy of a well-written principle: the statement, why it matters, examples of good implementation, what would violate it, how to measure it, and when to review it. The user's subject is injected at the top. A Copy button exports the template as plain text for pasting into Notion or a doc.
+
+**Craft with AI** — a chat interface backed by Cloudflare Workers AI. The AI receives the user's subject and all 7 question-and-answer pairs as grounding context. It guides the user through the template using the Socratic method: asking one specific question at a time, pushing back if a draft statement describes a process instead of a truth, and never writing the principle for them. Three starter prompts remove the blank-page problem.
 
 ---
 
@@ -41,8 +51,9 @@ All logic is client-side. No backend, no database.
 |---|---|
 | Frontend | React 18 + TypeScript + Vite 6 |
 | Styling | **Keel** `--of-*` design tokens (vendored from `github.com/czhengjuarez/Keel`) |
-| Backend | Single Cloudflare Worker (`frontend-worker.js`) — static SPA serving only, no API routes |
-| Storage | None (v1 is fully static) |
+| Worker | Single Cloudflare Worker (`frontend-worker.js`) — static SPA serving + `POST /api/craft` |
+| AI | Cloudflare Workers AI — `@cf/meta/llama-3.3-70b-instruct-fp8-fast` |
+| Storage | None — no database, no R2 |
 | Deployment | Cloudflare Workers (account: ChangyingArts) |
 
 ---
@@ -51,14 +62,16 @@ All logic is client-side. No backend, no database.
 
 ```
 shared-principles/
-├── frontend-worker.js      # Edge Worker: serves SPA, no API routes
+├── frontend-worker.js      # Edge Worker: SPA serving + POST /api/craft (AI)
 ├── src/
 │   ├── data/
-│   │   └── questions.ts    # All question content, weights, output text, and score()
+│   │   └── questions.ts    # Questions, weights, output text, score(), AnswerContext
 │   ├── components/
-│   │   ├── Layout.tsx           # App shell + theme toggle
-│   │   ├── QuestionScreen.tsx   # Single question + 3 radio options + nav
-│   │   └── ResultScreen.tsx     # Recommendation + why + expandable sections
+│   │   ├── Layout.tsx             # App shell + theme toggle
+│   │   ├── QuestionScreen.tsx     # Single question + 3 radio options + nav
+│   │   ├── ResultScreen.tsx       # Recommendation + expandable sections + principle tools
+│   │   ├── PrincipleTemplate.tsx  # Pre-filled template card + copy button
+│   │   └── PrincipleCrafter.tsx   # AI chat grounded in user's context
 │   ├── pages/
 │   │   └── Home.tsx        # State machine: intro → questions → result
 │   └── styles/
@@ -76,7 +89,10 @@ shared-principles/
 
 ```bash
 npm install
-npm run dev          # Vite dev server on :5173
+npm run dev          # Vite dev server on :5173 (proxies /api → :8787)
+
+# To test the AI crafter locally, run the Worker in a second terminal:
+npx wrangler dev --remote --port 8787
 
 npm run build        # tsc -b && vite build
 npm run deploy       # build + wrangler deploy
@@ -86,7 +102,7 @@ npm run deploy       # build + wrangler deploy
 
 ## Content
 
-Everything lives in [`src/data/questions.ts`](src/data/questions.ts) — questions, option weights, lean labels, and the full output text for each recommendation (why, what this means, next steps). Edit there to change the logic or content; redeploy.
+All question content, weights, output text, and scoring logic live in [`src/data/questions.ts`](src/data/questions.ts). Edit there to change questions, recommendation text, or scoring thresholds; redeploy.
 
 ---
 
